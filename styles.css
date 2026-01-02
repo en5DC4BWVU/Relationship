@@ -1,0 +1,264 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.tree-viewport-wrapper {
+    position: relative;
+}
+
+.tree-viewport {
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    overflow: hidden;
+    position: relative;
+    height: calc(100vh - 150px);
+    min-height: 600px;
+}
+
+.tree-viewport-controls {
+    pointer-events: none;
+}
+
+.tree-viewport-controls .btn {
+    pointer-events: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* cytoscape canvas */
+#cy {
+    width: 100%;
+    height: 100%;
+    background: white;
+    cursor: grab;
+}
+
+#cy:active {
+    cursor: grabbing;
+}
+
+/* ノードのカーソル */
+#cy .cy-node {
+    cursor: pointer;
+}
+
+.person-card {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 160px;
+    max-width: 200px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    z-index: 2;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin: 0 5px;
+}
+
+.person-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.person-card.birthday {
+    border-color: #e74c3c;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+.person-card.birthday::before {
+    content: "🎂";
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 24px;
+    background: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.person-name {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #2c3e50;
+    word-break: break-word;
+}
+
+.person-info {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+}
+
+.person-age {
+    color: #667eea;
+    font-weight: bold;
+}
+
+.expand-icon {
+    font-size: 12px;
+    color: #667eea;
+    margin-left: 4px;
+    cursor: pointer;
+}
+
+/* 夫婦の横線 */
+.couple-connector {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(to right, #667eea, #764ba2, #667eea);
+    z-index: 1;
+    border-radius: 2px;
+    margin: 0 10px;
+}
+
+.children-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    position: relative;
+    margin-top: 20px;
+    gap: 100px;
+    padding-left: 0;
+    padding-right: 60px;
+}
+
+/* 複数の子がある場合の接続線 - SVGで描画するため非表示 */
+.children-container::before {
+    display: none;
+}
+
+.children-container::after {
+    display: none;
+}
+
+/* 世代ごとの色分け（色分けレベルで区別） */
+.family-group[data-generation="1"] .person-card {
+    background: #fff5e6;
+    border-color: #ffa500;
+}
+
+.family-group[data-generation="2"] .person-card {
+    background: #e6f3ff;
+    border-color: #4a90e2;
+}
+
+.family-group[data-generation="3"] .person-card {
+    background: #f0f8f0;
+    border-color: #5cb85c;
+}
+
+.family-group[data-generation="4"] .person-card {
+    background: #fff0f5;
+    border-color: #ff69b4;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .tree-viewport {
+        padding: 0;
+        height: calc(100vh - 200px);
+        min-height: 400px;
+    }
+    
+    .tree-viewport-controls {
+        top: 5px !important;
+        right: 5px !important;
+    }
+    
+    .tree-viewport-controls .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .person-card {
+        min-width: 140px;
+        max-width: 160px;
+        padding: 12px;
+    }
+
+    .person-name {
+        font-size: 14px;
+    }
+
+    .person-info {
+        font-size: 12px;
+    }
+
+    .family-wrapper {
+        margin-right: 60px;
+        min-width: 160px;
+    }
+
+    .children-container {
+        gap: 60px;
+    }
+    
+    /* カード内のボタンサイズ調整 */
+    .card-body .btn-lg {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    /* テキストエリアの行数調整 */
+    #jsonInput {
+        font-size: 11px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    body {
+        padding: 5px;
+    }
+    
+    .tree-viewport {
+        height: calc(100vh - 250px);
+        min-height: 300px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    .card-text {
+        font-size: 0.85rem;
+    }
+    
+    #jsonInput {
+        rows: 8;
+        font-size: 10px !important;
+    }
+}

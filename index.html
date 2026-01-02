@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="家族向け関係図ページ">
+    <title>関係図</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- cytoscape for graph visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <!-- dagre for hierarchical layout -->
+    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="mb-3">
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">📋 家族の情報を入力してください</h5>
+                            <p class="card-text text-muted small mb-3">
+                                下のテキストボックスに、家族の情報をコピー＆ペーストしてください。<br>
+                                家族の名前、生年月日、親子関係などの情報を、決まった形式で入力します。
+                            </p>
+                            <label for="jsonInput" class="form-label fw-bold">家族の情報（テキスト）:</label>
+                            <textarea id="jsonInput" class="form-control font-monospace" rows="12" style="font-size: 12px;" placeholder="ここに家族の情報を貼り付けてください（JSON形式）"></textarea>
+                            <small class="form-text text-muted d-block mt-1">※ スマートフォンでは横スクロールで全体を確認できます</small>
+                            <div class="mt-3">
+                                <button id="loadButton" class="btn btn-primary btn-lg">
+                                    <span>✅</span> 読み込んで表示する
+                                </button>
+                            </div>
+                            <div id="errorMessage" class="alert alert-danger mt-3" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tree-viewport-wrapper position-relative">
+                    <div class="tree-viewport-controls position-absolute top-0 end-0 p-2" style="z-index: 1000;">
+                        <div class="btn-group-vertical gap-2">
+                            <button id="resetViewButton" class="btn btn-outline-secondary btn-sm" title="初期表示に戻す">
+                                <span>🔍</span> 初期表示
+                            </button>
+                            <button id="saveImageButton" class="btn btn-success btn-sm" title="画像で保存">
+                                <span>💾</span> 画像保存
+                            </button>
+                        </div>
+                    </div>
+                    <div class="tree-viewport">
+                        <div id="cy"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
