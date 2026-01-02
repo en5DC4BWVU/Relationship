@@ -60,7 +60,13 @@ function calculateMonths(birthDate) {
     // 年齢の月数部分を計算（0-11ヶ月）
     const age = calculateAge(birthDate);
     const ageInMonths = age * 12;
-    const monthsAfterAge = totalMonths - ageInMonths;
+    let monthsAfterAge = totalMonths - ageInMonths;
+    // 負の値や12以上の値を防ぐ（0-11の範囲に収める）
+    if (monthsAfterAge < 0) {
+        monthsAfterAge = 0;
+    } else if (monthsAfterAge >= 12) {
+        monthsAfterAge = 11;
+    }
     return monthsAfterAge;
 }
 
@@ -68,6 +74,7 @@ function calculateMonths(birthDate) {
 function formatAgeWithMonths(birthDate) {
     const age = calculateAge(birthDate);
     const months = calculateMonths(birthDate);
+    // 月数が0より大きい場合は表示（0ヶ月の場合は表示しない）
     if (months > 0) {
         // 月数を年齢の横に表示
         return `${age}歳 ${months}ヶ月`;
@@ -1066,88 +1073,108 @@ function saveAsImage() {
             full: true // 全体を画像に含める
         });
         
+        // base64データの形式を確認・修正（data:image/png;base64, プレフィックスを確実に付ける）
+        let imageDataUrl = pngBase64;
+        if (!imageDataUrl.startsWith('data:image/png;base64,')) {
+            if (imageDataUrl.startsWith('data:')) {
+                // 既にdata:プレフィックスがあるが、形式が異なる場合
+                imageDataUrl = 'data:image/png;base64,' + (imageDataUrl.includes(',') ? imageDataUrl.split(',')[1] : imageDataUrl);
+            } else {
+                // プレフィックスがない場合
+                imageDataUrl = 'data:image/png;base64,' + imageDataUrl;
+            }
+        }
+        
         // モバイルデバイスの場合
         if (isMobileDevice()) {
             // iOS/Androidでは、画像を新しいタブで開いて長押しで保存できるようにする
-            const imageWindow = window.open();
+            const imageWindow = window.open('', '_blank');
             if (imageWindow) {
-                imageWindow.document.write(`
-                    <html>
-                        <head>
-                            <title>関係図 - 保存用</title>
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <style>
-                                body {
-                                    margin: 0;
-                                    padding: 20px;
-                                    background: #f5f5f5;
-                                    display: flex;
-                                    flex-direction: column;
-                                    align-items: center;
-                                    justify-content: center;
-                                    min-height: 100vh;
-                                }
-                                img {
-                                    max-width: 100%;
-                                    height: auto;
-                                    border: 1px solid #ddd;
-                                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                                }
-                                .instructions {
-                                    margin-top: 20px;
-                                    padding: 15px;
-                                    background: white;
-                                    border-radius: 8px;
-                                    text-align: center;
-                                    max-width: 400px;
-                                }
-                                .instructions h3 {
-                                    margin: 0 0 10px 0;
-                                    color: #333;
-                                }
-                                .instructions p {
-                                    margin: 5px 0;
-                                    color: #666;
-                                    font-size: 14px;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <img src="${pngBase64}" alt="関係図">
-                            <div class="instructions">
-                                <h3>📱 画像を保存する方法</h3>
-                                <p><strong>iPhone/iPad:</strong><br>画像を長押しして「写真に保存」を選択</p>
-                                <p><strong>Android:</strong><br>画像を長押しして「画像を保存」を選択</p>
-                            </div>
-                        </body>
-                    </html>
-                `);
+                // 画像が読み込まれるまで待つ
+                const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>関係図 - 保存用</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: white;
+            display: block;
+        }
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .instructions h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .instructions p {
+            margin: 8px 0;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .loading {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">画像を読み込んでいます...</div>
+    <img src="${imageDataUrl}" alt="関係図" onload="this.parentElement.querySelector('.loading').style.display='none';" onerror="this.parentElement.querySelector('.loading').innerHTML='画像の読み込みに失敗しました。';">
+    <div class="instructions">
+        <h3>📱 画像を保存する方法</h3>
+        <p><strong>iPhone/iPad:</strong><br>画像を長押しして「写真に保存」を選択</p>
+        <p><strong>Android:</strong><br>画像を長押しして「画像を保存」を選択</p>
+    </div>
+</body>
+</html>`;
+                imageWindow.document.write(htmlContent);
                 imageWindow.document.close();
             } else {
-                // ポップアップブロックされている場合、Data URLを直接使用
+                // ポップアップブロックされている場合
                 alert('ポップアップがブロックされています。ブラウザの設定でポップアップを許可してください。\n\nまたは、画像を長押しして保存してください。');
-                // フォールバック: 画像をクリップボードにコピー（対応ブラウザのみ）
-                if (navigator.clipboard && navigator.clipboard.write) {
-                    fetch(pngBase64)
-                        .then(res => res.blob())
-                        .then(blob => {
-                            const item = new ClipboardItem({ 'image/png': blob });
-                            return navigator.clipboard.write([item]);
-                        })
-                        .then(() => alert('画像をクリップボードにコピーしました。'))
-                        .catch(() => {
-                            // クリップボードにコピーできない場合、Data URLを表示
-                            const dataUrlWindow = window.open('', '_blank');
-                            if (dataUrlWindow) {
-                                dataUrlWindow.document.write(`<img src="${pngBase64}" style="max-width:100%;">`);
-                            }
-                        });
-                }
+                // フォールバック: 現在のページに画像を表示
+                const img = document.createElement('img');
+                img.src = imageDataUrl;
+                img.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 90%; max-height: 90%; z-index: 10000; border: 2px solid #333; box-shadow: 0 4px 20px rgba(0,0,0,0.5);';
+                img.onclick = function() { document.body.removeChild(this); };
+                document.body.appendChild(img);
             }
         } else {
             // デスクトップの場合：通常のダウンロード
             // base64文字列を処理（data:image/png;base64, のプレフィックスを除去）
-            const base64Data = pngBase64.includes(',') ? pngBase64.split(',')[1] : pngBase64;
+            const base64Data = imageDataUrl.includes(',') ? imageDataUrl.split(',')[1] : imageDataUrl;
             
             // base64をBlobに変換
             const byteCharacters = atob(base64Data);
@@ -1215,20 +1242,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // 年齢表示の切り替え
-    function toggleAgeDisplay() {
+    // 年齢表示の切り替え（表示位置を保持）
+    function toggleAgeDisplay(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
         showAge = !showAge;
+        console.log('年齢表示を切り替え:', showAge); // デバッグ用
         updateAgeButton();
         if (cy) {
-            renderFamilyTree();
+            // 現在の表示位置（panとzoom）を保存
+            const currentPan = cy.pan();
+            const currentZoom = cy.zoom();
+            
+            // 既存のノードのラベルのみを更新
+            cy.nodes('[personId]').forEach(node => {
+                const personId = node.data('personId');
+                const person = getPersonById(personId);
+                if (person) {
+                    // ノードラベルを作成
+                    let label = `${person.name}\n${formatDate(person.birthDate)}`;
+                    if (showAge) {
+                        label += `\n${formatAgeWithMonths(person.birthDate)}`;
+                    }
+                    // ラベルを更新
+                    node.data('label', label);
+                }
+            });
+            
+            // 保存した表示位置を復元
+            cy.pan(currentPan);
+            cy.zoom(currentZoom);
+            
+            console.log('ラベルを更新しました（表示位置は保持）'); // デバッグ用
+        } else {
+            console.log('cyが存在しません'); // デバッグ用
         }
     }
     
     // イベントリスナーを設定
+    const toggleAgeButton = document.getElementById('toggleAgeButton');
+    if (toggleAgeButton) {
+        // クリックとタッチの両方に対応
+        toggleAgeButton.addEventListener('click', toggleAgeDisplay);
+        // タッチイベント（スマホ対応）
+        toggleAgeButton.addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            toggleAgeDisplay(event);
+        }, { passive: false });
+        // 念のためtouchendも追加
+        toggleAgeButton.addEventListener('touchend', function(event) {
+            event.preventDefault();
+        }, { passive: false });
+    } else {
+        console.error('toggleAgeButtonが見つかりません');
+    }
+    
     document.getElementById('loadButton').addEventListener('click', loadJsonData);
     document.getElementById('saveImageButton').addEventListener('click', saveAsImage);
     document.getElementById('resetViewButton').addEventListener('click', resetView);
-    document.getElementById('toggleAgeButton').addEventListener('click', toggleAgeDisplay);
     
     // 初期状態でボタンを更新
     updateAgeButton();
