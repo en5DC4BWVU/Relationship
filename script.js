@@ -749,7 +749,7 @@ function renderFamilyTree() {
                     'opacity': 1,
                     'text-valign': 'center',
                     'text-halign': 'center',
-                    'grabbable': true // ドラッグ可能にする
+                    'grabbable': false // ドラッグ不可
                 }
             },
             {
@@ -768,7 +768,8 @@ function renderFamilyTree() {
                     'color': '#2c3e50',
                     'text-wrap': 'wrap',
                     'text-max-width': 160,
-                    'label': 'data(label)'
+                    'label': 'data(label)',
+                    'grabbable': false // ドラッグ不可
                 }
             },
             {
@@ -803,10 +804,12 @@ function renderFamilyTree() {
     
     // 計算した位置をノードに設定（presetレイアウト用）
     // cytoscapeインスタンス作成後に位置を設定する必要がある
+    const nodeOriginalPositions = new Map(); // ノードの元の位置を保存
     nodePositions.forEach((position, nodeId) => {
         const cyNode = cy.getElementById(nodeId);
         if (cyNode.length > 0) {
             cyNode.position({ x: position.x, y: position.y });
+            nodeOriginalPositions.set(nodeId, { x: position.x, y: position.y });
         }
     });
     
@@ -814,6 +817,26 @@ function renderFamilyTree() {
     cy.nodes().forEach(node => {
         if (!nodePositions.has(node.id())) {
             node.position({ x: 0, y: 0 });
+            nodeOriginalPositions.set(node.id(), { x: 0, y: 0 });
+        }
+    });
+    
+    // すべてのノードに対して明示的にgrabbableをfalseに設定
+    cy.nodes().forEach(node => {
+        node.style('grabbable', false);
+    });
+    
+    // ノードのドラッグを無効化
+    cy.on('grab', 'node', function(evt) {
+        evt.preventDefault(); // ドラッグを防止
+    });
+    
+    cy.on('drag', 'node', function(evt) {
+        const node = evt.target;
+        // 元の位置に戻す
+        const originalPos = nodeOriginalPositions.get(node.id());
+        if (originalPos) {
+            node.position(originalPos);
         }
     });
     
@@ -879,7 +902,8 @@ function renderFamilyTree() {
                             'color': '#2c3e50',
                             'text-wrap': 'wrap',
                             'text-max-width': 160,
-                            'label': 'data(label)'
+                            'label': 'data(label)',
+                            'grabbable': false // ドラッグ不可
                         }
                     },
                     {
@@ -910,6 +934,20 @@ function renderFamilyTree() {
                 boxSelectionEnabled: false
             });
             
+            // ノードのドラッグを無効化
+            cy.on('grab', 'node', function(evt) {
+                evt.preventDefault(); // ドラッグを防止
+            });
+            
+            cy.on('drag', 'node', function(evt) {
+                const node = evt.target;
+                // 元の位置に戻す
+                const originalPos = nodePositions.get(node.id());
+                if (originalPos) {
+                    node.position(originalPos);
+                }
+            });
+            
             // ノードクリックイベント（展開/折りたたみ）
             cy.on('tap', 'node', function(evt) {
                 const node = evt.target;
@@ -931,6 +969,24 @@ function renderFamilyTree() {
                         renderFamilyTree();
                     }
                 }
+            });
+            
+            // ノードのドラッグを無効化（フォールバック用）
+            cy.on('grab', 'node', function(evt) {
+                evt.preventDefault(); // ドラッグを防止
+            });
+            
+            cy.on('drag', 'node', function(evt) {
+                const node = evt.target;
+                // 元の位置を取得して戻す
+                const pos = node.position();
+                // ドラッグ開始時の位置を保存（初回のみ）
+                if (!node.data('originalX')) {
+                    node.data('originalX', pos.x);
+                    node.data('originalY', pos.y);
+                }
+                // 元の位置に戻す
+                node.position({ x: node.data('originalX'), y: node.data('originalY') });
             });
             
             cy.ready(() => {
