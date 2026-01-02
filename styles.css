@@ -4,11 +4,23 @@
     box-sizing: border-box;
 }
 
+html {
+    /* スマホでの自動ズームを防ぐ */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* タッチ操作の最適化 */
+    touch-action: manipulation;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     padding: 20px;
+    /* 最小フォントサイズを16pxに設定（iOS Safariの自動ズームを防ぐ） */
+    font-size: 16px;
 }
 
 .tree-viewport-wrapper {
@@ -231,7 +243,7 @@ body {
     
     /* テキストエリアの行数調整 */
     #jsonInput {
-        font-size: 11px !important;
+        font-size: 14px !important;
     }
 }
 
@@ -259,6 +271,6 @@ body {
     
     #jsonInput {
         rows: 8;
-        font-size: 10px !important;
+        font-size: 14px !important;
     }
 }
