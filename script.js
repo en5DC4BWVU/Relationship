@@ -10,8 +10,10 @@
 // 家族ごとに10の位で区切り、兄弟は1の位で連番
 let familyData = [];
 
-// 展開状態を管理するSet
-let expandedNodes = new Set();
+// 折りたたみ機能は削除（常に全展開）
+
+// 年齢表示の状態（デフォルトはオフ）
+let showAge = false;
 
 // 関係図データを更新する関数
 function updateFamilyData(newData) {
@@ -31,8 +33,7 @@ function updateFamilyData(newData) {
     familyData.length = 0;
     familyData.push(...newData);
     
-    // 展開状態をリセット（すべて展開）
-    expandedNodes = new Set(familyData.map(p => p.id));
+    // 折りたたみ機能は削除（常に全展開）
 }
 
 // 生年月日から年齢を計算
@@ -45,6 +46,34 @@ function calculateAge(birthDate) {
         age--;
     }
     return age;
+}
+
+// 生年月日から月数を計算（年齢の月数部分、0-11ヶ月）
+function calculateMonths(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let totalMonths = (today.getFullYear() - birth.getFullYear()) * 12;
+    totalMonths += today.getMonth() - birth.getMonth();
+    if (today.getDate() < birth.getDate()) {
+        totalMonths--;
+    }
+    // 年齢の月数部分を計算（0-11ヶ月）
+    const age = calculateAge(birthDate);
+    const ageInMonths = age * 12;
+    const monthsAfterAge = totalMonths - ageInMonths;
+    return monthsAfterAge;
+}
+
+// 年齢と月数の表示用テキストを作成（月数は小さめに表示）
+function formatAgeWithMonths(birthDate) {
+    const age = calculateAge(birthDate);
+    const months = calculateMonths(birthDate);
+    if (months > 0) {
+        // 月数を年齢の横に表示
+        return `${age}歳 ${months}ヶ月`;
+    } else {
+        return `${age}歳`;
+    }
 }
 
 // 今日が誕生日かチェック
@@ -87,18 +116,9 @@ function getPersonGeneration(personId) {
     return 1;
 }
 
-// 親が展開されているかチェック（再帰的）
+// 親が展開されているかチェック（常にtrue - 折りたたみ機能削除）
 function isParentExpanded(personId) {
-    const person = getPersonById(personId);
-    if (!person) return true;
-    
-    if (person.parentIds.length === 0) {
-        return true;
-    }
-    
-    return person.parentIds.every(parentId => {
-        return expandedNodes.has(parentId) && isParentExpanded(parentId);
-    });
+    return true; // 常に全展開
 }
 
 // 兄弟を取得（同じ親を持つ子）
@@ -155,13 +175,11 @@ function renderFamilyTree() {
         const age = calculateAge(person.birthDate);
         const isBirthday = isBirthdayToday(person.birthDate);
         const generation = getPersonGeneration(person.id);
-        const hasChildren = person.childrenIds.length > 0;
-        const isExpanded = expandedNodes.has(person.id);
         
         // ノードラベルを作成
-        let label = `${person.name}\n${formatDate(person.birthDate)}\n${age}歳`;
-        if (hasChildren) {
-            label += `\n${isExpanded ? '▼' : '▶'}`;
+        let label = `${person.name}\n${formatDate(person.birthDate)}`;
+        if (showAge) {
+            label += `\n${formatAgeWithMonths(person.birthDate)}`;
         }
         
         // 世代ごとの色を設定
@@ -192,8 +210,6 @@ function renderFamilyTree() {
                 label: label,
                 personId: person.id,
                 generation: generation,
-                hasChildren: hasChildren,
-                isExpanded: isExpanded,
                 backgroundColor: backgroundColor,
                 borderColor: borderColor
             }
@@ -207,7 +223,10 @@ function renderFamilyTree() {
             if (spouse && isParentExpanded(spouse.id)) {
                 const spouseAge = calculateAge(spouse.birthDate);
                 const spouseIsBirthday = isBirthdayToday(spouse.birthDate);
-                const spouseLabel = `${spouse.name}\n${formatDate(spouse.birthDate)}\n${spouseAge}歳`;
+                let spouseLabel = `${spouse.name}\n${formatDate(spouse.birthDate)}`;
+                if (showAge) {
+                    spouseLabel += `\n${formatAgeWithMonths(spouse.birthDate)}`;
+                }
                 
                 let spouseBackgroundColor = backgroundColor;
                 let spouseBorderColor = borderColor;
@@ -222,8 +241,6 @@ function renderFamilyTree() {
                         label: spouseLabel,
                         personId: spouse.id,
                         generation: generation,
-                        hasChildren: spouse.childrenIds.length > 0,
-                        isExpanded: expandedNodes.has(spouse.id),
                         backgroundColor: spouseBackgroundColor,
                         borderColor: spouseBorderColor
                     }
@@ -233,8 +250,7 @@ function renderFamilyTree() {
                 
                 // 夫婦の間に接点ノードを作成（子がいる場合のみ）
                 const junctionId = `junction_${Math.min(person.id, spouse.id)}_${Math.max(person.id, spouse.id)}`;
-                const hasChildrenTogether = (person.childrenIds.length > 0 || spouse.childrenIds.length > 0) &&
-                    (isExpanded || expandedNodes.has(spouse.id));
+                const hasChildrenTogether = (person.childrenIds.length > 0 || spouse.childrenIds.length > 0);
                 
                 if (hasChildrenTogether && !createdJunctions.has(junctionId)) {
                     // 接点ノードを作成（見えないノード）
@@ -277,7 +293,7 @@ function renderFamilyTree() {
         }
         
         // 親子関係のエッジを追加
-        if (isExpanded && person.childrenIds.length > 0) {
+        if (person.childrenIds.length > 0) {
             person.childrenIds.forEach(childId => {
                 const child = getPersonById(childId);
                 if (child && isParentExpanded(childId)) {
@@ -764,7 +780,7 @@ function renderFamilyTree() {
                     'text-valign': 'center',
                     'text-halign': 'center',
                     'font-size': 14,
-                    'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif',
+                    'font-family': '"Font Awesome 6 Free", -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif',
                     'color': '#2c3e50',
                     'text-wrap': 'wrap',
                     'text-max-width': 160,
@@ -840,28 +856,7 @@ function renderFamilyTree() {
         }
     });
     
-    // ノードクリックイベント（展開/折りたたみ）
-    cy.on('tap', 'node', function(evt) {
-        const node = evt.target;
-        const personId = node.data('personId');
-        const hasChildren = node.data('hasChildren');
-        
-        if (hasChildren && personId) {
-            const person = getPersonById(personId);
-            if (person && person.childrenIds.length > 0) {
-                const isExpanded = expandedNodes.has(personId);
-                
-                if (isExpanded) {
-                    expandedNodes.delete(personId);
-                } else {
-                    expandedNodes.add(personId);
-                }
-                
-                // 再描画
-                renderFamilyTree();
-            }
-        }
-    });
+    // ノードクリックイベントは削除（折りたたみ機能削除）
     
     // presetレイアウトを使用（位置は既に計算済み）
     const layout = cy.layout({
@@ -898,7 +893,7 @@ function renderFamilyTree() {
                             'text-valign': 'center',
                             'text-halign': 'center',
                             'font-size': 14,
-                            'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif',
+                            'font-family': '"Font Awesome 6 Free", -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif',
                             'color': '#2c3e50',
                             'text-wrap': 'wrap',
                             'text-max-width': 160,
@@ -948,28 +943,7 @@ function renderFamilyTree() {
                 }
             });
             
-            // ノードクリックイベント（展開/折りたたみ）
-            cy.on('tap', 'node', function(evt) {
-                const node = evt.target;
-                const personId = node.data('personId');
-                const hasChildren = node.data('hasChildren');
-                
-                if (hasChildren && personId) {
-                    const person = getPersonById(personId);
-                    if (person && person.childrenIds.length > 0) {
-                        const isExpanded = expandedNodes.has(personId);
-                        
-                        if (isExpanded) {
-                            expandedNodes.delete(personId);
-                        } else {
-                            expandedNodes.add(personId);
-                        }
-                        
-                        // 再描画
-                        renderFamilyTree();
-                    }
-                }
-            });
+            // ノードクリックイベントは削除（折りたたみ機能削除）
             
             // ノードのドラッグを無効化（フォールバック用）
             cy.on('grab', 'node', function(evt) {
@@ -1070,6 +1044,12 @@ function resetView() {
     }
 }
 
+// モバイルデバイスかどうかを判定
+function isMobileDevice() {
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+           (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+}
+
 // 画像で保存
 function saveAsImage() {
     if (!cy) {
@@ -1086,27 +1066,108 @@ function saveAsImage() {
             full: true // 全体を画像に含める
         });
         
-        // base64文字列を処理（data:image/png;base64, のプレフィックスを除去）
-        const base64Data = pngBase64.includes(',') ? pngBase64.split(',')[1] : pngBase64;
-        
-        // base64をBlobに変換
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        // モバイルデバイスの場合
+        if (isMobileDevice()) {
+            // iOS/Androidでは、画像を新しいタブで開いて長押しで保存できるようにする
+            const imageWindow = window.open();
+            if (imageWindow) {
+                imageWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>関係図 - 保存用</title>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <style>
+                                body {
+                                    margin: 0;
+                                    padding: 20px;
+                                    background: #f5f5f5;
+                                    display: flex;
+                                    flex-direction: column;
+                                    align-items: center;
+                                    justify-content: center;
+                                    min-height: 100vh;
+                                }
+                                img {
+                                    max-width: 100%;
+                                    height: auto;
+                                    border: 1px solid #ddd;
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                                }
+                                .instructions {
+                                    margin-top: 20px;
+                                    padding: 15px;
+                                    background: white;
+                                    border-radius: 8px;
+                                    text-align: center;
+                                    max-width: 400px;
+                                }
+                                .instructions h3 {
+                                    margin: 0 0 10px 0;
+                                    color: #333;
+                                }
+                                .instructions p {
+                                    margin: 5px 0;
+                                    color: #666;
+                                    font-size: 14px;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <img src="${pngBase64}" alt="関係図">
+                            <div class="instructions">
+                                <h3>📱 画像を保存する方法</h3>
+                                <p><strong>iPhone/iPad:</strong><br>画像を長押しして「写真に保存」を選択</p>
+                                <p><strong>Android:</strong><br>画像を長押しして「画像を保存」を選択</p>
+                            </div>
+                        </body>
+                    </html>
+                `);
+                imageWindow.document.close();
+            } else {
+                // ポップアップブロックされている場合、Data URLを直接使用
+                alert('ポップアップがブロックされています。ブラウザの設定でポップアップを許可してください。\n\nまたは、画像を長押しして保存してください。');
+                // フォールバック: 画像をクリップボードにコピー（対応ブラウザのみ）
+                if (navigator.clipboard && navigator.clipboard.write) {
+                    fetch(pngBase64)
+                        .then(res => res.blob())
+                        .then(blob => {
+                            const item = new ClipboardItem({ 'image/png': blob });
+                            return navigator.clipboard.write([item]);
+                        })
+                        .then(() => alert('画像をクリップボードにコピーしました。'))
+                        .catch(() => {
+                            // クリップボードにコピーできない場合、Data URLを表示
+                            const dataUrlWindow = window.open('', '_blank');
+                            if (dataUrlWindow) {
+                                dataUrlWindow.document.write(`<img src="${pngBase64}" style="max-width:100%;">`);
+                            }
+                        });
+                }
+            }
+        } else {
+            // デスクトップの場合：通常のダウンロード
+            // base64文字列を処理（data:image/png;base64, のプレフィックスを除去）
+            const base64Data = pngBase64.includes(',') ? pngBase64.split(',')[1] : pngBase64;
+            
+            // base64をBlobに変換
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/png' });
+            
+            // Blob URLを作成してダウンロード
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = '関係図_' + new Date().toISOString().slice(0, 10) + '.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/png' });
-        
-        // Blob URLを作成してダウンロード
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = '関係図_' + new Date().toISOString().slice(0, 10) + '.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
     } catch (error) {
         console.error('画像保存エラー:', error);
         alert('画像の保存に失敗しました: ' + error.message);
@@ -1138,10 +1199,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const jsonInput = document.getElementById('jsonInput');
     jsonInput.value = '';
     
+    // 年齢表示トグルボタンの更新
+    function updateAgeButton() {
+        const ageButton = document.getElementById('toggleAgeButton');
+        if (ageButton) {
+            if (showAge) {
+                ageButton.classList.remove('btn-outline-info');
+                ageButton.classList.add('btn-info');
+                ageButton.innerHTML = '<i class="fas fa-user me-1"></i>年齢表示 ON';
+            } else {
+                ageButton.classList.remove('btn-info');
+                ageButton.classList.add('btn-outline-info');
+                ageButton.innerHTML = '<i class="fas fa-user me-1"></i>年齢表示 OFF';
+            }
+        }
+    }
+    
+    // 年齢表示の切り替え
+    function toggleAgeDisplay() {
+        showAge = !showAge;
+        updateAgeButton();
+        if (cy) {
+            renderFamilyTree();
+        }
+    }
+    
     // イベントリスナーを設定
     document.getElementById('loadButton').addEventListener('click', loadJsonData);
     document.getElementById('saveImageButton').addEventListener('click', saveAsImage);
     document.getElementById('resetViewButton').addEventListener('click', resetView);
+    document.getElementById('toggleAgeButton').addEventListener('click', toggleAgeDisplay);
+    
+    // 初期状態でボタンを更新
+    updateAgeButton();
     
     // 関係図は初期状態では表示しない（データがないため）
     // renderFamilyTree();
